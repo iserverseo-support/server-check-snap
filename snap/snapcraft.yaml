@@ -1,0 +1,22 @@
+name: server-check
+base: core24
+version: '0.1.0'
+summary: Lightweight server health-check CLI
+description: |
+  A simple read-only command-line tool for checking basic server
+  health information such as hostname, operating system, uptime,
+  disk usage, memory, load average, and failed systemd units.
+
+website: https://iserversupport.com/linux-server-management/
+
+grade: devel
+confinement: strict
+
+parts:
+  server-check:
+    plugin: dump
+    source: bin
+    organize:
+      server-check: usr/bin/server-check
+    stage:
+      - usr/bin/server-check

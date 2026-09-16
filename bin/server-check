@@ -1,0 +1,78 @@
+#!/bin/bash
+
+set -u
+
+echo "=== Server Check ==="
+echo
+
+echo "Hostname:"
+hostname
+echo
+
+echo "Operating System:"
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    echo "${PRETTY_NAME:-Unknown}"
+elif command -v sw_vers >/dev/null 2>&1; then
+    sw_vers -productName
+    sw_vers -productVersion
+else
+    echo "Unknown"
+fi
+echo
+
+echo "Uptime:"
+uptime
+echo
+
+echo "Disk Usage (/):"
+df -h /
+echo
+
+echo "Memory:"
+if command -v free >/dev/null 2>&1; then
+    free -h
+elif command -v vm_stat >/dev/null 2>&1; then
+    pagesize=$(pagesize)
+    vm_stat | awk -v ps="$pagesize" '
+        /Pages free/ {free=$3}
+        /Pages active/ {active=$3}
+        /Pages inactive/ {inactive=$3}
+        /Pages wired down/ {wired=$4}
+        END {
+            gsub("\\.", "", free)
+            gsub("\\.", "", active)
+            gsub("\\.", "", inactive)
+            gsub("\\.", "", wired)
+
+            printf "Free: %.1f GB\n", free * ps / 1024 / 1024 / 1024
+            printf "Active: %.1f GB\n", active * ps / 1024 / 1024 / 1024
+            printf "Inactive: %.1f GB\n", inactive * ps / 1024 / 1024 / 1024
+            printf "Wired: %.1f GB\n", wired * ps / 1024 / 1024 / 1024
+        }
+    '
+else
+    echo "Memory information is not available"
+fi
+echo
+
+echo "Load Average:"
+if [ -r /proc/loadavg ]; then
+    awk '{print "1m="$1, "5m="$2, "15m="$3}' /proc/loadavg
+else
+    uptime | awk -F'load averages?: ' 'NF > 1 {print $2}'
+fi
+echo
+
+echo "Failed systemd units:"
+if command -v systemctl >/dev/null 2>&1; then
+    failed="$(systemctl --failed --no-legend --plain 2>/dev/null || true)"
+
+    if [ -n "$failed" ]; then
+        printf '%s\n' "$failed"
+    else
+        echo "No failed units"
+    fi
+else
+    echo "systemd is not available"
+fi
